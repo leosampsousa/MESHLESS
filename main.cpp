@@ -22,18 +22,22 @@ int main(int argc, char *argv[])
 #include "lagrangemultiplier.h"
 #include "direct.h"
 #include "solucaoexata.h"
+#include <fstream>
+#include <stdio.h>
+#include <sstream>
 int main()
 {
+    ofstream file("output.txt");
     int pInt = 5;
     int polynomialOrder=2; //esta com a diferença de 1
-    int n_node=50;
+    int n_node=5;
     double min=0;
     double max=3;
-   // int pInt=2;
     double alpha = 0.9;
     double beta= 2.1;
     double passoAlpha = 0.1;
     double passoBeta = 0.1;
+    double deslocamentoPontoCentral;
     VectorXd u;
     VectorXd solucaoExata(n_node);
     MethodId method = MethodId::DMLPG1;
@@ -67,6 +71,12 @@ int main()
     double comparador = 100;
     for(pInt = 3; pInt<=6;pInt++){
         for(alpha = 0.6;alpha <=2.4;alpha+=passoAlpha){
+
+            file << "\"Beta_"<< "n" << n_node << "_" << "m" << polynomialOrder<<"_"<<"i"<<pInt <<"_" <<"a"<< alpha << "\" ";
+            file << "\"Error_"<< "n" << n_node << "_" << "m" << polynomialOrder<<"_"<<"i"<<pInt <<"_" <<"a"<< alpha << "\" ";
+            file << "\"u_central_"<< "n" << n_node << "_" << "m" << polynomialOrder<<"_"<<"i"<<pInt <<"_" <<"a"<< alpha << "\""<<endl;
+
+
             for(beta = 1.2; beta <=3.0;beta+=passoBeta){
                 if(alpha>beta) continue;
                 VectorXd norma;
@@ -74,9 +84,13 @@ int main()
                 BoundaryConditions* boundaryConditions = new Direct();
                 Analyzer analyzer(polynomialOrder,model,solver, method,boundaryConditions,T,K,f);
                 analyzer.analyze(pInt,n_node);
+                deslocamentoPontoCentral = Node::calculateDeslocamentoQualquer(max/2,analyzer.getU_hat(),polynomialOrder,model.getWeightFunction(),model.getNodes());
                 u = analyzer.getU();
                 norma = solucaoExata - u;
                 error = (norma.norm())/(solucaoExata.norm());
+
+                file << beta<< " "<<error << " "<< deslocamentoPontoCentral<<endl;
+
                 if(error < comparador){
                     comparador = error;
                     melhorAlpha = alpha;
@@ -95,9 +109,13 @@ int main()
     }
 
 
+
+    file.close();
+
     cout<<"\nO menor erro foi : "<<comparador<<"\nele foi obtido por meio do alpha igual a: "<<melhorAlpha<<" e do beta igual a: "<<melhorBeta<<" e com "<< melhorpInt <<" pontos de integração"<<endl;
     cout <<"u: \n"<<melhor_u <<endl;
     cout <<"solucaoExata: \n"<<solucaoExata <<endl;
+
 
     return 0;
 }

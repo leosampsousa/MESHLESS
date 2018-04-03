@@ -84,6 +84,7 @@ VectorXd Model::update(VectorXd u_hat, int polynomialOrder)
 }
 
 
+
 vector<Node> Model::getConstrainedNodes()
 {
 #if PRINT

@@ -49,7 +49,7 @@ public:
     void calculateLocalSystem(double min, double max, MethodId method, int polynomialOrder, WeightFunction* weight, const vector<Node>& nodes, const Load &T, Load &K, Load &f, vector<CoefficientTriplet>* coeffK, vector<CoefficientTriplet>* coefff, int pInt, int n_node);
     DMLPG_parameters *calculateIntegrationPointsParameters(double point, MethodId method, int polynomialOrder, WeightFunction* weight, const vector<Node>& nodes, const Load &T, const Load &K, const Load &f);
     //faltando o "parameters"
-    DMLPG_parameters* calculateShapeFunctionParameters(double point,int polynomialOrder, WeightFunction* weight,const vector<Node> &nodes);
+    static DMLPG_parameters* calculateShapeFunctionParameters(double point,int polynomialOrder, WeightFunction* weight,const vector<Node> &nodes);
     void calculateContribuitionK(DMLPG_parameters* parameters, vector<CoefficientTriplet>* coeffK, int j, Node node, double w, MethodId method);
     void calculateContribuitionf(DMLPG_parameters* parameters, vector<CoefficientTriplet>* coefff, double w);
     void calculateContribuitionLeft(DMLPG_parameters* parameters, vector<CoefficientTriplet>* coeffK, int j, Node node, MethodId method);
@@ -65,6 +65,7 @@ public:
     int getId() const;
     double getDeslocamento() const;
     double calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes);
+    static double calculateDeslocamentoQualquer(double position, VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes);
 };
 
 

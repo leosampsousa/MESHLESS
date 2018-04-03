@@ -25,18 +25,26 @@ double Node::getDeslocamento() const
     return deslocamento;
 }
 
-double Node::calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes)
+double Node::calculateDeslocamentoQualquer(double position, VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes)
 {
+    double deslocamento;
     int cont=0;
 #if PRINT
         cout<<"\t\t\tCalculando deslocamento final"<<endl;
 #endif
     DMLPG_parameters* parameters = calculateShapeFunctionParameters(position,polynomialOrder,weight,nodes);
+   // DMLPG_parameters* parameters = calculateShapeFunctionParameters(3/2,polynomialOrder,weight,nodes);
     for(Node node:parameters->adjacentNodes){
         deslocamento += node.calculateShapeFunction(parameters, cont++)*u_hat(node.dof->getEquationNumber());
     }
     delete parameters;
 
+    return deslocamento;
+}
+
+double Node::calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes)
+{
+    deslocamento = calculateDeslocamentoQualquer(position,u_hat,polynomialOrder,weight,nodes);
     return deslocamento;
 }
 
@@ -63,7 +71,7 @@ DMLPG_parameters *Node :: calculateShapeFunctionParameters(double point,int poly
 
     int adjacentNodes_size=0;
     for (const Node node :  nodes){
-       double valor = weight->calculate(point,node.position,weightRadius);
+       double valor = weight->calculate(point,node.position,node.weightRadius);
        if (valor > 0){
            w(adjacentNodes_size++)=valor;
            parameters->adjacentNodes.push_back(node);
@@ -129,7 +137,7 @@ DMLPG_parameters *Node::calculateIntegrationPointsParameters(double point, Metho
 
     int adjacentNodes_size=0;
     for (const Node node :  nodes){
-        double valor = weight->calculate(point,node.position,weightRadius);
+        double valor = weight->calculate(point,node.position,node.weightRadius);
         if (valor > 0){
             w(adjacentNodes_size++)=valor;
             parameters->adjacentNodes.push_back(node);

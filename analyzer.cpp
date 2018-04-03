@@ -6,6 +6,11 @@ VectorXd Analyzer::getU() const
     return u;
 }
 
+VectorXd Analyzer::getU_hat() const
+{
+    return u_hat;
+}
+
 Analyzer::Analyzer(int polynomialOrder, Model model, Solver solver, MethodId method, BoundaryConditions* boundaryconditions, Load T, Load K, Load f)
     : polynomialOrder(polynomialOrder), model(model), solver(solver), method(method), boundaryconditions(boundaryconditions), T(T), K(K), f(f)
 {
@@ -51,7 +56,7 @@ void Analyzer::analyze(int pInt, int n_node)
 
     cout<<"impondo condições de contorno"<<endl;
 #endif
-    VectorXd u_hat = this->solver.solve(stiffness,force);
+    u_hat = this->solver.solve(stiffness,force);
 
 #if PRINT
     cout<<"resolvendo sistema"<<endl;
