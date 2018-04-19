@@ -21,7 +21,7 @@ private:
 public:
     Analyzer(int polynomialOrder, Model model, Solver solver, MethodId method, BoundaryConditions* boundaryconditions, Load T, Load K, Load f);
     ~Analyzer();
-    void analyze(int pInt, int n_node);
+    bool analyze(int pInt, int n_node);
     VectorXd getU() const;
     VectorXd getU_teste() const;
     VectorXd getU_hat() const;

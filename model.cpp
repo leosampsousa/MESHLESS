@@ -50,7 +50,7 @@ Model::~Model()
     nodes.clear();
 }
 
-void Model::calculateSystem(MethodId method, int polynomialOrder, const Load &T, Load &K, Load &f, int pInt,int n_node)
+void Model::calculateSystem(MethodId method, int polynomialOrder, const Load &T, Load &K, Load &f, int pInt,int n_node,bool *ok)
 {
     //erro era que um vetor de <CoefficientTriplet estava sendo passado como argumento da função calculateLocalSystem que pedia
     //apenas um CoefficientTriplet
@@ -62,14 +62,17 @@ void Model::calculateSystem(MethodId method, int polynomialOrder, const Load &T,
 
     for(Node node : nodes)
     {
-        node.calculateLocalSystem(this->min,this->max,method,polynomialOrder,this->weightFunction,nodes,T,K,f,&coeffK,&coeff, pInt,n_node);
+        node.calculateLocalSystem(this->min,this->max,method,polynomialOrder,this->weightFunction,nodes,T,K,f,&coeffK,&coeff, pInt,n_node,ok);
+        if(!*ok){
+            return;
+        }
     }
 
     stiffness.setFromTriplets(coeffK.begin(),coeffK.end());
     force.setFromTriplets(coeff.begin(),coeff.end());
 }
 
-VectorXd Model::update(VectorXd u_hat, int polynomialOrder)
+VectorXd Model::update(VectorXd u_hat, int polynomialOrder,bool *ok)
 {
 #if PRINT
     cout<< "u chapeu atualizado"<<endl;
@@ -77,10 +80,21 @@ VectorXd Model::update(VectorXd u_hat, int polynomialOrder)
 
     VectorXd result(u_hat.rows());
     for(Node node : nodes){
-        result(node.getDof()->getEquationNumber()) = node.calculateDeslocamento(u_hat, polynomialOrder,this->getWeightFunction(),nodes);
+        result(node.getDof()->getEquationNumber()) = node.calculateDeslocamento(u_hat, polynomialOrder,this->getWeightFunction(),nodes,ok);
+        if(!*ok){
+            return VectorXd (0);
+        }
     }
 
     return result;
+}
+
+void Model::shapeGraphics(int totalPoints, int polynomialOrder, bool *ok, ofstream *file, int n_node, MethodId method,Load T, Load K, Load f)
+{
+    for(Node node : nodes){
+        cout << "nó externo id: " << node.getId();
+        node.shapeGraphic(totalPoints,polynomialOrder,weightFunction,nodes,ok,file,n_node,min,max,method,T,K,f);
+    }
 }
 
 

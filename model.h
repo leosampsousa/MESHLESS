@@ -22,8 +22,9 @@ private:
 public:
     Model(int n_node, double min, double max,double alpha,double beta);
     ~Model();
-    void calculateSystem(MethodId method, int polynomialOrder, const Load &T, Load &K, Load &f, int pInt, int n_node);
-    VectorXd update(VectorXd hat_u, int polynomialOrder);
+    void calculateSystem(MethodId method, int polynomialOrder, const Load &T, Load &K, Load &f, int pInt, int n_node, bool *ok);
+    VectorXd update(VectorXd hat_u, int polynomialOrder, bool *ok);
+    void shapeGraphics(int totalPoints ,int polynomialOrder, bool *ok, ofstream *file, int n_node, MethodId method,Load T, Load K, Load f);
     //MatrixXd getK();
    //  VectorXd getF();
     vector<Node> getConstrainedNodes();

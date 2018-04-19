@@ -24,12 +24,16 @@ Analyzer::~Analyzer()
     delete boundaryconditions;
 }
 
-void Analyzer::analyze(int pInt, int n_node)
+bool Analyzer::analyze(int pInt, int n_node)
 {
+    bool ok = true;
 #if PRINT
     cout<<"analisando o modelo"<<endl;
 #endif
-    this->model.calculateSystem(this->method,this->polynomialOrder,this->T,this->K,this->f,pInt, n_node);
+    this->model.calculateSystem(this->method,this->polynomialOrder,this->T,this->K,this->f,pInt, n_node,&ok);
+    if(!ok){
+        return false;
+    }
 #if PRINT
     cout<<"pós calculo sistema"<<endl;
 #endif
@@ -48,7 +52,10 @@ void Analyzer::analyze(int pInt, int n_node)
 #if PRINT
     cout <<"recebendo o vetor ANTES\n"<<MatrixXd(force)<<endl;
 #endif
-    this->boundaryconditions->impose(&stiffness,&force,model.getConstrainedNodes(),polynomialOrder,model.getWeightFunction(),model.getNodes(),this->T,this->K,this->f);
+    this->boundaryconditions->impose(&stiffness,&force,model.getConstrainedNodes(),polynomialOrder,model.getWeightFunction(),model.getNodes(),this->T,this->K,this->f,&ok);
+    if(!ok){
+        return false;
+    }
 
 #if PRINT
     cout <<"\n\nrecebendo a Matriz DEPOIS\n"<<MatrixXd(stiffness)<<endl;
@@ -63,11 +70,15 @@ void Analyzer::analyze(int pInt, int n_node)
     cout<<"u chapeu: \n"<< scientific << setprecision(15) <<u_hat<<endl;
 #endif
     //adicionar a cada nó seu deslocamento
-    u = model.update(u_hat,this->polynomialOrder);
-    cout<<"u: \n"<< scientific << setprecision(15) <<u<<endl;
+    u = model.update(u_hat,this->polynomialOrder,&ok);
+    if(!ok){
+        return false;
+    }
+   // cout<<"u: \n"<< scientific << setprecision(15) <<u<<endl;
 #if PRINT
     cout<<"atualizando modelo"<<endl;
 #endif
+    return true;
 }
 
 

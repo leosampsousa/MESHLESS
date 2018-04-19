@@ -3,6 +3,7 @@
 #include "monomialbases.h"
 #include "constraineddof.h"
 #include <iomanip>
+#include <fstream>
 
 
 DOF *Node::getDof() const
@@ -25,14 +26,16 @@ double Node::getDeslocamento() const
     return deslocamento;
 }
 
-double Node::calculateDeslocamentoQualquer(double position, VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes)
+double Node::calculateDeslocamentoQualquer(double position, VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes, bool *ok)
 {
     double deslocamento;
     int cont=0;
 #if PRINT
         cout<<"\t\t\tCalculando deslocamento final"<<endl;
 #endif
-    DMLPG_parameters* parameters = calculateShapeFunctionParameters(position,polynomialOrder,weight,nodes);
+
+    DMLPG_parameters* parameters = calculateShapeFunctionParameters(position,polynomialOrder,weight,nodes, ok);
+    if(!*ok) return 0.0;
    // DMLPG_parameters* parameters = calculateShapeFunctionParameters(3/2,polynomialOrder,weight,nodes);
     for(Node node:parameters->adjacentNodes){
         deslocamento += node.calculateShapeFunction(parameters, cont++)*u_hat(node.dof->getEquationNumber());
@@ -42,9 +45,96 @@ double Node::calculateDeslocamentoQualquer(double position, VectorXd u_hat, int 
     return deslocamento;
 }
 
-double Node::calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes)
+void Node::shapeGraphic(int totalPoints ,int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, bool *ok, ofstream *file, int n_node, int min , int max , MethodId method,Load T, Load K, Load f)
 {
-    deslocamento = calculateDeslocamentoQualquer(position,u_hat,polynomialOrder,weight,nodes);
+    DMLPG_parameters *parameters;
+    int N = 2*totalPoints;
+    double minLocal, maxLocal,step;
+    int count;
+    double shape[n_node];
+    double shapeDiff[n_node];
+    double sumShape[n_node];
+
+
+    *file << "\"node_"<<id<<"_point"<<"\" \"node_"<<id<<"_accumulator"<<"\" " ;
+    *file << "\"node_"<<id<<"_accumulatorDiff"<<"\" " << "\"node_"<<id<<"_sum"<<"\" ";
+
+    for(int i = 0 ; i<n_node;i++){
+
+        *file << "\"node_"<<id<<"_shape_"<<i<<"\" \"node_"<<id<<"_shapeDiff_"<<i<<"\" " ;
+        *file << "\"node_"<<id<<"_sumShape_"<<i<<"\" " ;
+    }
+
+    *file<<endl;
+    if(isLeft() || isRight(n_node)){
+        N = totalPoints;
+    }
+
+    minLocal = position - weightRadius - 0.1;
+    maxLocal = position + weightRadius + 0.1;
+
+    if(minLocal < min){
+        minLocal = min;
+    }
+
+    if(maxLocal > max){
+        maxLocal = max;
+    }
+    step = (maxLocal - minLocal)/N;
+
+
+    for(int i = 0 ; i <= N ; i++){
+        count = 0;
+        double point = minLocal + i*step;
+
+        for(int i = 0;i < n_node;i++){
+            shape[i]=0;
+            shapeDiff[i]=0;
+            sumShape[i]=0;
+        }
+
+        parameters = calculateIntegrationPointsParameters(point,method,polynomialOrder,weight,nodes,T,K,f,ok);
+        if(!*ok){
+            return;
+        }
+        double accumulator=0;
+        double accumulatorDiff = 0;
+        double sum =0;
+        for(Node node:parameters->adjacentNodes){
+            double shapeValue = (parameters->testFunction*node.calculateShapeFunction(parameters, count))*parameters->K;
+            double shapeDiffValue = (parameters->testeFunctionDiff*node.calculateShapeFunctionDerivative(parameters, method, count))*parameters->T;
+            shape[node.id-1]= shapeValue;
+            shapeDiff[node.id-1]= shapeDiffValue;
+            sumShape[node.id-1] = shapeValue + shapeDiffValue;
+            accumulator += shapeValue;
+            accumulatorDiff += shapeDiffValue;
+            sum += shapeValue + shapeDiffValue;
+            count++;
+        }
+
+        *file << point << " " <<accumulator<<" "<< accumulatorDiff << " " << sum;
+
+        for(int i = 0 ; i<n_node;i++){
+
+           *file << " " << shape[i] << " " <<shapeDiff[i]<< " " <<sumShape[i];
+        }
+
+        *file<<endl;
+
+
+        delete parameters;
+
+    }
+
+
+}
+
+double Node::calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes,bool *ok)
+{
+    deslocamento = calculateDeslocamentoQualquer(position,u_hat,polynomialOrder,weight,nodes,ok);
+    if(!*ok){
+        return 0.0;
+    }
     return deslocamento;
 }
 
@@ -61,7 +151,7 @@ Node::~Node()
 
 }
 
-DMLPG_parameters *Node :: calculateShapeFunctionParameters(double point,int polynomialOrder, WeightFunction *weight,const vector<Node> &nodes){
+DMLPG_parameters *Node :: calculateShapeFunctionParameters(double point,int polynomialOrder, WeightFunction *weight,const vector<Node> &nodes, bool *ok){
 
     DMLPG_parameters* parameters = new DMLPG_parameters();
     MonomialBases monomialBases;
@@ -91,12 +181,15 @@ DMLPG_parameters *Node :: calculateShapeFunctionParameters(double point,int poly
 
 
     if(A.fullPivLu().isInvertible()){
+        *ok = true;
 #if PRINT
         cout<<"\t\t\t\té invertivel"<<endl;
 #endif
     }else{
+        *ok = false;
         cout<<"\t\t\t\tnão é invertivel"<<endl;
-        exit(1);
+        return NULL;
+
     }
     MatrixXd A1 = A.inverse();
 
@@ -104,7 +197,7 @@ DMLPG_parameters *Node :: calculateShapeFunctionParameters(double point,int poly
     return parameters;
 }
 
-DMLPG_parameters *Node::calculateIntegrationPointsParameters(double point, MethodId method, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, const Load &T, const Load &K, const Load &f)
+DMLPG_parameters *Node::calculateIntegrationPointsParameters(double point, MethodId method, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, const Load &T, const Load &K, const Load &f,bool *ok)
 {
     DMLPG_parameters* parameters;
     if (method == MethodId::DMLPG1){
@@ -162,12 +255,15 @@ DMLPG_parameters *Node::calculateIntegrationPointsParameters(double point, Metho
 
 
     if(A.fullPivLu().isInvertible()){
+        *ok = true;
 #if PRINT
         cout<<"\t\t\t\té invertivel"<<endl;
 #endif
     }else{
+        *ok = false;
         cout<<"\t\t\t\tnão é invertivel"<<endl;
-        exit(1);
+        return NULL;
+
     }
     MatrixXd A1 = A.inverse();
 
@@ -269,7 +365,7 @@ void Node::calculateContribuitionRight(DMLPG_parameters *parameters, vector<Coef
 void Node::calculateLocalSystem(double min, double max, MethodId method, int polynomialOrder,
                                 WeightFunction *weight, const vector<Node> &nodes,
                                 const Load &T,  Load &K,  Load &f,
-                                vector<CoefficientTriplet> *coeffK, vector<CoefficientTriplet> *coefff, int pInt,int n_node)
+                                vector<CoefficientTriplet> *coeffK, vector<CoefficientTriplet> *coefff, int pInt,int n_node,bool *ok)
 {
 #if PRINT
     cout<<"\n----------------------------\n\t\tcalculando sistema local do nó: "<<id<<endl;
@@ -296,7 +392,12 @@ void Node::calculateLocalSystem(double min, double max, MethodId method, int pol
         cout<<"\t\t\tPosição ponto de integração "<<i << ": "<<intPosition<<endl;
         cout<<"\t\t\tPeso ponto de integração "<<i << ": "<<intWeight<<endl;
 #endif
-        DMLPG_parameters* parameters = calculateIntegrationPointsParameters(intPosition,method,polynomialOrder,weight,nodes,T,K,f);
+        DMLPG_parameters* parameters = calculateIntegrationPointsParameters(intPosition,method,polynomialOrder,weight,nodes,T,K,f,ok);
+        if(!*ok){
+            delete parameters;
+            return;
+        }
+
         int cont=0;
         for(Node node:parameters->adjacentNodes){
 #if PRINT
@@ -319,7 +420,11 @@ void Node::calculateLocalSystem(double min, double max, MethodId method, int pol
 #if PRINT
         cout<<"\t\t\tRecalculando parametros para o nó esquerdo"<<endl;
 #endif
-        DMLPG_parameters* parameters = calculateIntegrationPointsParameters(min,method,polynomialOrder,weight,nodes,T,K,f);
+        DMLPG_parameters* parameters = calculateIntegrationPointsParameters(min,method,polynomialOrder,weight,nodes,T,K,f,ok);
+        if(!*ok){
+            delete parameters;
+            return;
+        }
         for(Node node:parameters->adjacentNodes){
             calculateContribuitionLeft(parameters,coeffK,cont++,node,method);
         }
@@ -333,8 +438,12 @@ void Node::calculateLocalSystem(double min, double max, MethodId method, int pol
 #if PRINT
         cout<<"\t\t\tRecalculando parametros para o nó direito"<<endl;
 #endif
-        DMLPG_parameters* parameters = calculateIntegrationPointsParameters(max,method,polynomialOrder,weight,nodes,T,K,f);
+        DMLPG_parameters* parameters = calculateIntegrationPointsParameters(max,method,polynomialOrder,weight,nodes,T,K,f,ok);
         cont=0;
+        if(!*ok){
+            delete parameters;
+            return;
+        }
         for(Node node:parameters->adjacentNodes){
             calculateContribuitionRight(parameters,coeffK,cont++,node,method);
         }
@@ -349,6 +458,7 @@ void Node::calculateLocalSystem(double min, double max, MethodId method, int pol
 
 double Node::calculateShapeFunction(DMLPG_parameters *parameters, int j)
 {
+
     return (parameters->p.transpose()*parameters->A1B)(0,j);
 }
 
@@ -356,6 +466,9 @@ double Node::calculateShapeFunctionDerivative(DMLPG_parameters *parameters, Meth
 {
     //MatrixXd shapeFunctionDerivative;
     if (method == MethodId::DMLPG1){
+        //cout <<parameters->pDiff<<endl;
+       // cout << parameters->A1B<<endl;
+
         return (parameters->pDiff.transpose()*parameters->A1B)(0,j);
     }else {
         return (parameters->pDiff.transpose()*parameters->A1B + parameters->p.transpose()*((MLPG_parameters*)(parameters))->A1BDiff)(0,j);
@@ -384,8 +497,12 @@ double Node::calculateImposeContribution(DMLPG_parameters *parameters, int j, No
     return contribuition;
 }
 
-void Node :: imposeCondition(StiffnessSparseMatrix *stiffness, ForceSparseVector *force, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, const Load &T, const Load &K, const Load &f){
-    DMLPG_parameters* parameters = calculateIntegrationPointsParameters(position, MethodId::DMLPG1,polynomialOrder, weight, nodes, T, K, f);
+void Node :: imposeCondition(StiffnessSparseMatrix *stiffness, ForceSparseVector *force, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, const Load &T, const Load &K, const Load &f, bool *ok){
+    DMLPG_parameters* parameters = calculateIntegrationPointsParameters(position, MethodId::DMLPG1,polynomialOrder, weight, nodes, T, K, f, ok);
+    if(!*ok){
+        delete parameters;
+        return;
+    }
 #if PRINT
     cout<<"posição: "<<position<<endl;
 #endif

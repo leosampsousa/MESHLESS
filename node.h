@@ -46,10 +46,10 @@ private :
 public:
     Node(int id,double position, double testRadius, double weightRadius,DOF *dof);
     ~Node();
-    void calculateLocalSystem(double min, double max, MethodId method, int polynomialOrder, WeightFunction* weight, const vector<Node>& nodes, const Load &T, Load &K, Load &f, vector<CoefficientTriplet>* coeffK, vector<CoefficientTriplet>* coefff, int pInt, int n_node);
-    DMLPG_parameters *calculateIntegrationPointsParameters(double point, MethodId method, int polynomialOrder, WeightFunction* weight, const vector<Node>& nodes, const Load &T, const Load &K, const Load &f);
+    void calculateLocalSystem(double min, double max, MethodId method, int polynomialOrder, WeightFunction* weight, const vector<Node>& nodes, const Load &T, Load &K, Load &f, vector<CoefficientTriplet>* coeffK, vector<CoefficientTriplet>* coefff, int pInt, int n_node, bool *ok);
+    DMLPG_parameters *calculateIntegrationPointsParameters(double point, MethodId method, int polynomialOrder, WeightFunction* weight, const vector<Node>& nodes, const Load &T, const Load &K, const Load &f, bool *ok);
     //faltando o "parameters"
-    static DMLPG_parameters* calculateShapeFunctionParameters(double point,int polynomialOrder, WeightFunction* weight,const vector<Node> &nodes);
+    static DMLPG_parameters* calculateShapeFunctionParameters(double point,int polynomialOrder, WeightFunction* weight,const vector<Node> &nodes, bool* ok);
     void calculateContribuitionK(DMLPG_parameters* parameters, vector<CoefficientTriplet>* coeffK, int j, Node node, double w, MethodId method);
     void calculateContribuitionf(DMLPG_parameters* parameters, vector<CoefficientTriplet>* coefff, double w);
     void calculateContribuitionLeft(DMLPG_parameters* parameters, vector<CoefficientTriplet>* coeffK, int j, Node node, MethodId method);
@@ -58,14 +58,15 @@ public:
     double calculateShapeFunctionDerivative(DMLPG_parameters* parameters, MethodId method, int j);
     bool isLeft();
     bool isRight(int n_node);
-    void imposeCondition(StiffnessSparseMatrix *stiffness, ForceSparseVector *force, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, const Load &T, const Load &K, const Load &f);
+    void imposeCondition(StiffnessSparseMatrix *stiffness, ForceSparseVector *force, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, const Load &T, const Load &K, const Load &f, bool *ok);
     double calculateImposeContribution(DMLPG_parameters *parameters, int j, Node node);
     DOF *getDof() const;
     void setDof(DOF *value);
     int getId() const;
     double getDeslocamento() const;
-    double calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes);
-    static double calculateDeslocamentoQualquer(double position, VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes);
+    double calculateDeslocamento(VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes, bool *ok);
+    static double calculateDeslocamentoQualquer(double position, VectorXd u_hat, int polynomialOrder, WeightFunction* weight, const vector<Node> &nodes, bool *ok);
+    void shapeGraphic(int total_points, int polynomialOrder, WeightFunction *weight, const vector<Node> &nodes, bool *ok, ofstream *file, int n_node, int min, int max, MethodId method, Load T, Load K, Load f);
 };
 
 
