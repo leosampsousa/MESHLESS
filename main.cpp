@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
 #include <sstream>
 int main()
 {
+    //teste
     ofstream file("output_MLPG_5.txt");
     ofstream fileShape("output_MLPG_GRAPHIC_3.txt");
     int pInt = 3;
@@ -44,7 +45,7 @@ int main()
     VectorXd u;
     VectorXd solucaoExata(n_node);
     MethodId method = MethodId::MLPG1;
-   // Model model(n_node, min, max, alpha, beta);
+   // Model model(n_node, min, max, leoalpha, beta);
     Solver solver;
 
     SolucaoExata solucao;
